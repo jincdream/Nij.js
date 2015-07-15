@@ -7,7 +7,27 @@
 <body>
   <script src="./base2.js"></script>
   <script>
-    
+    require.config({
+      // combom: true,
+      // combomUrl:'?combom=',
+      alies: {
+          'test': './module/test.js',
+          'testB': './module/testB.js'
+      },
+      deps:{
+        'a':['test'],
+        'test':['testB']
+      }
+    })
+    define('a',function(require,module,exports){
+      module.exports = 1
+      require('test').test()
+    })
+    require(['a'],function(a){
+      // console.log(a)
+      document.title = a
+    })
+
   </script>
 </body>
 </html>
