@@ -217,7 +217,7 @@
     var o = m.mods[name] = {};
     var e = o.exports = {};
     o.factory = function(){
-      fn.apply(m.w,[requireOnce, o, e]);
+      fn.apply(m.w,[requireOnce, e, o]);
       delete this.factory
     }
     o.loaded = !0

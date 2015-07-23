@@ -12,20 +12,22 @@
       // combomUrl:'?combom=',
       alies: {
           'test': './module/test.js',
-          'testB': './module/testB.js'
+          'testB': './module/testB.js',
+          'testC': './module/testB.js'
       },
       deps:{
         'a':['test'],
-        'test':['testB']
+        'testC':['testB']
       }
     })
-    define('a',function(require,module,exports){
+    define('a',function(require,exports,module){
       module.exports = 1
       require('test').test()
     })
-    require(['a'],function(a){
+    require(['a','testC'],function(a,testC){
       // console.log(a)
       document.title = a
+      console.log(testC.a)
     })
 
   </script>
