@@ -1,3 +1,4 @@
+// require
 (function(exports,doc){
   var win = exports
   var each = (function(){
@@ -71,7 +72,7 @@
         win.clearTimeout(loadID);
         log(id,src,url,' is load error')
       }
-      this.setStatus(0)
+      _self.setStatus(0)
     },
     fire: function(bind){
       var _self = this
@@ -127,43 +128,57 @@
 
   var module = {}
   module.mods = {}
+  module._path = {}
+  module._short = {}
   module.w = {}
-  module.config = function(config) {
-    var base = config.baseUrl || ''
-    module._alies = {}
-    for (var n in config.alies) {
-      var alies = this._alies[n] = {}
-      alies.src = base + config.alies[n]
-      alies.callback = []
+  module.config = function(config){
+    var _self      = this,n,short
+    var _base      = config.baseUrl || _self._baseUrl || ''
+    var _deps      = config.deps
+    var _combo     = config.combo
+    var _comboUrl  = config.comboUrl
+    var _path      = config.path
+    var _alies     = config.alies
+    for (n in _path) {
+      var path = _self._path[n] = _self._path[_path[n]] = {}
+      path.src = _path[n]
+      path.callback = []
     }
-    module._deps = config.deps
-    module._combom = config.combom
-    module._combomUrl = config.combomUrl
+    for (short in _alies){
+      _self._short[short] = _alies[short]
+    }
+    _self._baseUrl = _base
+    _deps     && (_self._deps     = _deps)
+    _combo    && (_self._combo    = _combo)
+    _comboUrl && (_self._comboUrl = _comboUrl)
   }
   var _getDeps = function(obj){
-    var mDeps = module._deps
+    var mDeps = module._deps || {}
     var deps = mDeps[obj]
     var rz = []
-    each(deps,function(dep,i){
+    deps && each(deps,function(dep,i){
       var otherDep = mDeps[dep]
       otherDep && rz.push.apply(rz,otherDep)
     })
-    rz.push.apply(rz,deps)
+    rz.push.apply(rz,deps || [])
     return rz
   }
-  var require = function(names, cb) {
-    var _self = module
-    var mods = _self.mods;
-    var alias = _self._alies
-    var src = ''
-    var loads = []
+  var require = function(names, cb , charset , _noCombo) {
+    var _self    = module
+    var mods     = _self.mods
+    var path     = _self._path
+    var baseUrl  = _self._baseUrl
+    var src      = ''
+    var loads    = []
     var callback = function(){
       var fn = []
       each(loads,function(name,i){
+        name = _self._short[name] || name
         var mod = mods[name]
         mod.factory && mod.factory()
       })
       each(names,function(name,i){
+        name = _self._short[name] || name
         fn[i] = mods[name].exports
       })
       cb.apply(null, fn)
@@ -173,49 +188,58 @@
     })
     loads.push.apply(loads,names)
     var len = loads.length
-    !_self._combom && each(loads, function(name, i) {
+    ;(!_self._combo || _noCombo) && each(loads, function(name, i, ary) {
       // if(mods[name].exports)
-      var mod = mods[name]
+      name = _self._short[name] || name
+      console.log(_self._short[name])
+      var mod      = mods[name]
+      var thisPath = path[name]
+      var loadSrc  = thisPath ? baseUrl + thisPath.src : name
       if (mod && mod.loaded) {
         if (--len === 0) callback()
       } else {
-        if (!alias[name]) throw new Error(name + 'is not define by module.')
-        src = alias[name].src
+        // if (!path[name]) throw new Error(name + 'is not define by module.')
+        src = loadSrc
         loadScript(src, function(src) {
-          if (name === 'pc') {
-            mods[name] = {
-              exports: window.pc
-            }
-          }
+          if(!mods[name])mods[name] = {}
           mods[name].loaded = !0
           if (--len === 0) callback()
-        },doc.charset,name)
+        },charset || doc.charset,name)
       }
     })
-    if(_self._combom){
-      var combom = []
+    if(_self._combo && !_noCombo){
+      var combo = []
       each(loads, function(name, i){
+        name = _self._short[name] || name
         var mod = mods[name]
         if(!mod || !mod.loaded){
-          var src = alias[name].src
-          if(!alias[name]) throw new Error(name + 'is not define by module.')
-          combom.push(src)
+          var src = path[name].src
+          if(!path[name]) throw new Error(name + 'is not define by module.')
+          combo.push(src)
         }
       })
-      loadScript(_self._combomUrl+combom.join(','),function(){
+      console.log(baseUrl)
+      combo.length > 0 ? loadScript((baseUrl + _self._comboUrl || '')+combo.join(','),function(){
         callback()
-      },doc.charset,combom.join(','))
+      },charset || doc.charset,combo.join(',')) : callback()
     }
-    // console.log(_self._combomUrl+combom.join(','))
+    // console.log(_self._comboUrl+combo.join(','))
   }
-  var requireOnce = function(name) {
-    return module.mods[name].exports
+  var requireOnce = function(name){
+    var mod = module.mods[name]
+    mod.factory && mod.factory()
+    return mod.exports
   }
   var define = function(name,deps,fn){
     !fn && (fn = deps,deps = [])
+    var _name = name.split('|')
+    var short = _name[0]
+    var _ln = _name.length > 1
+    var id = _ln ? _name[1] : short
     var m = module
-    var o = m.mods[name] = {};
+    var o = m.mods[id] = {};
     var e = o.exports = {};
+    _ln && (m._short[short] = id)
     o.factory = function(){
       fn.apply(m.w,[requireOnce, e, o]);
       delete this.factory
